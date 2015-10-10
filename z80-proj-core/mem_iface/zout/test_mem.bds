@@ -1,0 +1,9 @@
+binary-debuggable-source
+0000 0000 d 3a3332
+0000 0000 s START:	LD A, (3233H) ; read from EEPROM
+0003 0003 d 320920
+0003 0003 s 	LD (2009H), A ; write from RAM
+0006 0006 f test_mem.asm
+0006 0006 d c30000
+0006 0006 s 	JP START
+0000 a start

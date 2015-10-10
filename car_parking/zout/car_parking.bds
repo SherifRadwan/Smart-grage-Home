@@ -1,0 +1,80 @@
+binary-debuggable-source
+0000 0000 s ; initialize ports as following
+0000 0000 s ; A OUT, B IN, C OUT (82H)
+0000 0000 d 3e82
+0000 0000 s START:	LD A, 82H
+0002 0002 d d303
+0002 0002 s 	OUT 03H
+0004 0004 d 0600
+0004 0004 s 	LD B, 00H ; for the up/down counter value
+0006 0006 s 
+0006 0006 s ; take input from port B (01H)
+0006 0006 d db01
+0006 0006 s TAKEIN:  IN 01H
+0008 0008 d 57
+0008 0008 s 	LD D, A ; save the input
+0009 0009 s 
+0009 0009 s ; loop until input changes
+0009 0009 d db01
+0009 0009 s LOOP:	IN 01H
+000b 000b d ba
+000b 000b s 	CP D
+000c 000c d ca0900
+000c 000c s 	JP Z, LOOP
+000f 000f s 	
+000f 000f d 7a
+000f 000f s CHECK:	LD A, D ; restore original input
+0010 0010 d e601
+0010 0010 s 	AND 00000001B ; check for the first input at bit 0
+0012 0012 d ca1e00
+0012 0012 s 	JP Z, INCRB
+0015 0015 d 7a
+0015 0015 s 	LD A, D ; reload original input
+0016 0016 d e608
+0016 0016 s 	AND 00001000B ; check for the second input at bit 3
+0018 0018 d ca2b00
+0018 0018 s 	JP Z, DECRB
+001b 001b d c30600
+001b 001b s 	JP TAKEIN
+001e 001e s 
+001e 001e s 
+001e 001e s ; increament and output on port A (00H)
+001e 001e s ; stop at number 9
+001e 001e d 78
+001e 001e s INCRB:	LD A, B
+001f 001f d fe09
+001f 001f s 	CP 09D
+0021 0021 d ca0600
+0021 0021 s 	JP Z, TAKEIN
+0024 0024 d 04
+0024 0024 s 	INC B
+0025 0025 d 78
+0025 0025 s 	LD A, B
+0026 0026 d d300
+0026 0026 s 	OUT 00H
+0028 0028 d c30600
+0028 0028 s 	JP TAKEIN
+002b 002b s 
+002b 002b s ; decrement and output on port A (00H)
+002b 002b s ; stop at zero
+002b 002b d 78
+002b 002b s DECRB:	LD A, B
+002c 002c d fe00
+002c 002c s 	CP A, 00D
+002e 002e d ca0600
+002e 002e s 	JP Z, TAKEIN
+0031 0031 d 05
+0031 0031 s 	DEC B
+0032 0032 d 78
+0032 0032 s 	LD A, B
+0033 0033 d d300
+0033 0033 s 	OUT 00H
+0035 0035 f car_parking.asm
+0035 0035 d c30600
+0035 0035 s 	JP TAKEIN
+0009 a loop
+000f a check
+002b a decrb
+001e a incrb
+0000 a start
+0006 a takein

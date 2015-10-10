@@ -1,0 +1,65 @@
+   1:				; initialize ports as following
+   2:				; A OUT, B IN, C OUT (82H)
+   3:    0+7	0000  3E82    	START:	LD A, 82H
+   4:    7+11	0002  D303    		OUT 03H
+   5:   18+7	0004  0600    		LD B, 00H ; for the up/down counter value
+   6:				
+   7:				; take input from port B (01H)
+   8:   25+11	0006  DB01    	TAKEIN:  IN 01H
+   9:   36+4	0008  57      		LD D, A ; save the input
+  10:				
+  11:				; loop until input changes
+  12:   40+11	0009  DB01    	LOOP:	IN 01H
+  13:   51+4	000B  BA      		CP D
+  14:   55+10	000C  CA0900  		JP Z, LOOP
+  15:					
+  16:   65+4	000F  7A      	CHECK:	LD A, D ; restore original input
+  17:   69+7	0010  E601    		AND 00000001B ; check for the first input at bit 0
+  18:   76+10	0012  CA1E00  		JP Z, INCRB
+  19:   86+4	0015  7A      		LD A, D ; reload original input
+  20:   90+7	0016  E608    		AND 00001000B ; check for the second input at bit 3
+  21:   97+10	0018  CA2B00  		JP Z, DECRB
+  22:  107+10	001B  C30600  		JP TAKEIN
+  23:				
+  24:				
+  25:				; increament and output on port A (00H)
+  26:				; stop at number 9
+  27:  117+4	001E  78      	INCRB:	LD A, B
+  28:  121+7	001F  FE09    		CP 09D
+  29:  128+10	0021  CA0600  		JP Z, TAKEIN
+  30:  138+4	0024  04      		INC B
+  31:  142+4	0025  78      		LD A, B
+  32:  146+11	0026  D300    		OUT 00H
+  33:  157+10	0028  C30600  		JP TAKEIN
+  34:				
+  35:				; decrement and output on port A (00H)
+  36:				; stop at zero
+  37:  167+4	002B  78      	DECRB:	LD A, B
+  38:  171+7	002C  FE00    		CP A, 00D
+  39:  178+10	002E  CA0600  		JP Z, TAKEIN
+  40:  188+4	0031  05      		DEC B
+  41:  192+4	0032  78      		LD A, B
+  42:  196+11	0033  D300    		OUT 00H
+**** car_parking.asm ****
+  43:  207+10	0035  C30600  		JP TAKEIN
+
+
+
+Statistics:
+
+     4	passes
+     0	jr promotions
+     6	symbols
+    56	bytes
+
+
+
+Symbol Table:
+
+check              f     
+decrb             2b     
+incrb             1e     
+loop               9     
+start              0     
+takein             6     
+

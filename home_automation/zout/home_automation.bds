@@ -1,0 +1,459 @@
+binary-debuggable-source
+0000 0000 s ; init the PPI
+0000 0000 s ; A IN, B IN, C OUT
+0000 0000 d 
+0000 0000 s START:
+0000 0000 d 3e92
+0000 0000 s 	LD A, 92H
+0002 0002 d d303
+0002 0002 s 	OUT 03H
+0004 0004 d 311027
+0004 0004 s 	LD SP, 2710H
+0007 0007 s 
+0007 0007 d 
+0007 0007 s CLEAR:	
+0007 0007 d 215520
+0007 0007 s 	LD HL, PASSA
+000a 000a d 113f01
+000a 000a s 	LD DE, PASSD
+000d 000d s 
+000d 000d d 3e00
+000d 000d s 	LD A, 00H
+000f 000f d 325020
+000f 000f s 	LD (OUTSTAT), A ; output stat saved
+0012 0012 d 325320
+0012 0012 s 	LD (SENCOUNT), A ; sensors count/activated
+0015 0015 d 325220
+0015 0015 s 	LD (LASTSEN), A ; last activated sensor
+0018 0018 d 325420
+0018 0018 s 	LD (LOGFLAG), A ; log in state (flag) 0 = password hasn't been entered
+001b 001b s 			;			    wrong password
+001b 001b s 		 	;			    or cleared
+001b 001b s 		  	; 	      		1 = successful login
+001b 001b d 0e00
+001b 001b s 	LD C, 00H ; password length (count of bytes entered)
+001d 001d d c32b00
+001d 001d s 	JP CHECK
+0020 0020 s 
+0020 0020 s 
+0020 0020 s ; FIXME: using interrupts is better here
+0020 0020 d 
+0020 0020 s LOGTST:
+0020 0020 d 3a5420
+0020 0020 s 	LD A, (LOGFLAG)
+0023 0023 d fe01
+0023 0023 s 	CP 01H ; logged in?
+0025 0025 d ca4f00
+0025 0025 s 	JP Z, TAKEIN	; logged in
+0028 0028 d c30700
+0028 0028 s 	JP CLEAR	; not logged in, recheck
+002b 002b s 
+002b 002b s ; check for password input
+002b 002b s ; data available "DA" pin at the first bit of PORT C (C4..C7)
+002b 002b d 
+002b 002b s CHECK:
+002b 002b d db01
+002b 002b s 	IN 01H ; get data from port B
+002d 002d d 47
+002d 002d s 	LD B, A
+002e 002e s 
+002e 002e d db01
+002e 002e s LOOP:	IN 01H
+0030 0030 d b8
+0030 0030 s 	CP B
+0031 0031 d ca2e00
+0031 0031 s 	JP Z, LOOP
+0034 0034 s 	
+0034 0034 s 	; check for data availability
+0034 0034 d 78
+0034 0034 s 	LD A, B
+0035 0035 d e601
+0035 0035 s 	AND 00000001B
+0037 0037 d ca2b00
+0037 0037 s 	JP Z, CHECK ; no key available
+003a 003a s 
+003a 003a d db00
+003a 003a s 	IN 00H ; ok key is available, read it
+003c 003c d 47
+003c 003c s 	LD B, A ; temp storage
+003d 003d s 
+003d 003d d fe0a
+003d 003d s 	CP 10D ; key is 10 (clear)?
+003f 003f d ca0700
+003f 003f s 	JP Z, CLEAR ; then clear
+0042 0042 s 
+0042 0042 d 78
+0042 0042 s 	LD A, B ; reload key
+0043 0043 s 
+0043 0043 d fe0b
+0043 0043 s 	CP 11D ; key is 11 (enter)?
+0045 0045 d ca1601
+0045 0045 s 	JP Z, INITC ; compare password
+0048 0048 s 
+0048 0048 d c33901
+0048 0048 s 	JP SAVEIN ; else save data
+004b 004b s 
+004b 004b s 
+004b 004b s ; first open the door and toggle with speed 1
+004b 004b d 
+004b 004b s INITIN:
+004b 004b d cd6e00
+004b 004b s 	CALL DOORO ; open door
+004e 004e s 	;CALL TOGFAN  ; toggle fan
+004e 004e s 	;CALL TOGLGHT ; toggle light
+004e 004e d c9
+004e 004e s 	RET
+004f 004f s 
+004f 004f s ; read the inputs of bits 4, 5, 6 of PORT B
+004f 004f s ; bit 4 	fan control
+004f 004f s ; bit 5, 6	two sensors control
+004f 004f d db01
+004f 004f s TAKEIN:	IN 01H ; take input
+0051 0051 d 47
+0051 0051 s 	LD B, A
+0052 0052 s 	
+0052 0052 s ; wait for input to change
+0052 0052 d 
+0052 0052 s LOOP2:	
+0052 0052 d db01
+0052 0052 s 	IN 01H
+0054 0054 d b8
+0054 0054 s 	CP B
+0055 0055 d ca5200
+0055 0055 s 	JP Z, LOOP2
+0058 0058 s 	
+0058 0058 d 78
+0058 0058 s 	LD A, B ; restore
+0059 0059 s 
+0059 0059 d cb60
+0059 0059 s 	BIT 4, B ; test bit 4
+005b 005b d cc8400
+005b 005b s 	CALL Z, TOGFAN ; toggle fan
+005e 005e s 
+005e 005e d cb68
+005e 005e s 	BIT 5, B ; test bit 5
+0060 0060 d cc0201
+0060 0060 s 	CALL Z, SENSOR1
+0063 0063 d cb70
+0063 0063 s 	BIT 6, B ; test bit 6 
+0065 0065 d cc0c01
+0065 0065 s 	CALL Z, SENSOR2
+0068 0068 d cdd200
+0068 0068 s 	CALL CHECKINOUT ; check sensors
+006b 006b s 	;CALL TOGSEN ; toggle door and lights
+006b 006b s 
+006b 006b d c32000
+006b 006b s 	JP LOGTST ; go to test login again
+006e 006e s 
+006e 006e s ; open door
+006e 006e d 
+006e 006e s DOORO:	
+006e 006e d 3a5020
+006e 006e s 	LD A, (OUTSTAT) ; load current output stat
+0071 0071 d cbc7
+0071 0071 s 	SET 0, A ; set the first bit, door is opened
+0073 0073 d 325020
+0073 0073 s 	LD (OUTSTAT), A ; save output stat
+0076 0076 d d302
+0076 0076 s 	OUT 02H
+0078 0078 d c9
+0078 0078 s 	RET
+0079 0079 s 
+0079 0079 s ; close door
+0079 0079 d 
+0079 0079 s DOORC:
+0079 0079 d 3a5020
+0079 0079 s 	LD A, (OUTSTAT) ; load current output stat
+007c 007c d cb87
+007c 007c s 	RES 0, A ; set the first bit, door is opened
+007e 007e d 325020
+007e 007e s 	LD (OUTSTAT), A ; save output stat
+0081 0081 d d302
+0081 0081 s 	OUT 02H
+0083 0083 d c9
+0083 0083 s 	RET
+0084 0084 s 
+0084 0084 s 
+0084 0084 s ; toggle fan directly from last output
+0084 0084 d 
+0084 0084 s TOGFAN:
+0084 0084 d 3a5020
+0084 0084 s 	LD A, (OUTSTAT) ; load current output stat
+0087 0087 d 325020
+0087 0087 s 	LD (OUTSTAT), A
+008a 008a d cb57
+008a 008a s 	BIT 2, A ; test for speed1?
+008c 008c d c2ac00
+008c 008c s 	JP NZ, SPEED2 ; yes, go to speed2
+008f 008f d cb5f
+008f 008f s 	BIT 3, A ; test for speed2
+0091 0091 d caa200
+0091 0091 s 	JP Z, SPEED1 ; no, go to speed1
+0094 0094 d cd9800
+0094 0094 s 	CALL SPEED0
+0097 0097 d c9
+0097 0097 s 	RET
+0098 0098 s 
+0098 0098 d 
+0098 0098 s SPEED0:	
+0098 0098 d cb97
+0098 0098 s 	RES 2, A ;speed0 off
+009a 009a d cb9f
+009a 009a s 	RES 3, A
+009c 009c d 325020
+009c 009c s 	LD (OUTSTAT), A
+009f 009f d d302
+009f 009f s 	OUT 02H
+00a1 00a1 d c9
+00a1 00a1 s 	RET
+00a2 00a2 s 
+00a2 00a2 d 
+00a2 00a2 s SPEED1: 
+00a2 00a2 d cbd7
+00a2 00a2 s 	SET 2, A
+00a4 00a4 d cb9f
+00a4 00a4 s 	RES 3, A
+00a6 00a6 d 325020
+00a6 00a6 s 	LD (OUTSTAT), A
+00a9 00a9 d d302
+00a9 00a9 s 	OUT 02H
+00ab 00ab d c9
+00ab 00ab s 	RET
+00ac 00ac s 
+00ac 00ac d 
+00ac 00ac s SPEED2:	
+00ac 00ac d cbdf
+00ac 00ac s 	SET 3, A
+00ae 00ae d cb97
+00ae 00ae s 	RES 2, A
+00b0 00b0 d 325020
+00b0 00b0 s 	LD (OUTSTAT), A
+00b3 00b3 d d302
+00b3 00b3 s 	OUT 02H
+00b5 00b5 d c9
+00b5 00b5 s 	RET
+00b6 00b6 s 
+00b6 00b6 s 
+00b6 00b6 d 
+00b6 00b6 s TOGLGHT:
+00b6 00b6 d 3a5020
+00b6 00b6 s 	LD A, (OUTSTAT) ; load current output stat
+00b9 00b9 d cb4f
+00b9 00b9 s 	BIT 1, A
+00bb 00bb d c2c200
+00bb 00bb s 	JP NZ, LHTRES
+00be 00be d c3ca00
+00be 00be s 	JP LHTSET
+00c1 00c1 d c9
+00c1 00c1 s 	RET
+00c2 00c2 s 
+00c2 00c2 d cb8f
+00c2 00c2 s LHTRES:	RES 1, A
+00c4 00c4 d 325020
+00c4 00c4 s 	LD (OUTSTAT), A
+00c7 00c7 d d302
+00c7 00c7 s 	OUT 02H
+00c9 00c9 d c9
+00c9 00c9 s 	RET
+00ca 00ca s 
+00ca 00ca d cbcf
+00ca 00ca s LHTSET:	SET 1, A
+00cc 00cc d 325020
+00cc 00cc s 	LD (OUTSTAT), A
+00cf 00cf d d302
+00cf 00cf s 	OUT 02H
+00d1 00d1 d c9
+00d1 00d1 s 	RET
+00d2 00d2 s 
+00d2 00d2 s 
+00d2 00d2 d 
+00d2 00d2 s CHECKINOUT:
+00d2 00d2 d 3a5320
+00d2 00d2 s 	LD A, (SENCOUNT)
+00d5 00d5 d fe02
+00d5 00d5 s 	CP 02H
+00d7 00d7 d c0
+00d7 00d7 s 	RET NZ
+00d8 00d8 s 
+00d8 00d8 d 3e00
+00d8 00d8 s 	LD A, 00H
+00da 00da d 325320
+00da 00da s 	LD (SENCOUNT), A ; reset sensor count
+00dd 00dd s 
+00dd 00dd d 3a5220
+00dd 00dd s 	LD A, (LASTSEN)
+00e0 00e0 d fe01
+00e0 00e0 s 	CP 01H
+00e2 00e2 d ccf300
+00e2 00e2 s 	CALL Z, OUTSIDE
+00e5 00e5 d cde900
+00e5 00e5 s 	CALL INSIDE
+00e8 00e8 d c9
+00e8 00e8 s 	RET
+00e9 00e9 s 
+00e9 00e9 d 
+00e9 00e9 s INSIDE:
+00e9 00e9 d cda200
+00e9 00e9 s 	CALL SPEED1
+00ec 00ec d cdca00
+00ec 00ec s 	CALL LHTSET
+00ef 00ef d cd6e00
+00ef 00ef s 	CALL DOORO
+00f2 00f2 d c9
+00f2 00f2 s 	RET
+00f3 00f3 s 
+00f3 00f3 d 
+00f3 00f3 s OUTSIDE:
+00f3 00f3 d cd7900
+00f3 00f3 s 	CALL DOORC
+00f6 00f6 d cd9800
+00f6 00f6 s 	CALL SPEED0
+00f9 00f9 d cdc200
+00f9 00f9 s 	CALL LHTRES
+00fc 00fc d cd0700
+00fc 00fc s 	CALL CLEAR
+00ff 00ff d c32b00
+00ff 00ff s 	JP CHECK
+0102 0102 s 
+0102 0102 d 
+0102 0102 s SENSOR1:
+0102 0102 d 3e01
+0102 0102 s 	LD A, 01H
+0104 0104 d 325220
+0104 0104 s 	LD (LASTSEN), A
+0107 0107 d 215320
+0107 0107 s 	LD HL, SENCOUNT
+010a 010a d 34
+010a 010a s 	INC (HL)
+010b 010b d c9
+010b 010b s 	RET
+010c 010c s 
+010c 010c d 
+010c 010c s SENSOR2:
+010c 010c d 3e02
+010c 010c s 	LD A, 02H
+010e 010e d 325220
+010e 010e s 	LD (LASTSEN), A
+0111 0111 d 215320
+0111 0111 s 	LD HL, SENCOUNT
+0114 0114 d 34
+0114 0114 s 	INC (HL)
+0115 0115 d c9
+0115 0115 s 	RET
+0116 0116 s 
+0116 0116 s ; compare password and set the loggin flag
+0116 0116 s ; FIXME: length checked every time
+0116 0116 d 
+0116 0116 s INITC:
+0116 0116 d 79
+0116 0116 s 	LD A, C
+0117 0117 d 41
+0117 0117 s 	LD B, C ; save current length to memory
+0118 0118 d fe04
+0118 0118 s 	CP 04D ; check for current length
+011a 011a d c20700
+011a 011a s 	JP NZ, CLEAR ; length is not equal to our password 7358
+011d 011d s 	
+011d 011d s 	; length is ok, start comparison
+011d 011d s 
+011d 011d d 113f01
+011d 011d s 	LD DE, PASSD ; reset password address
+0120 0120 d 215520
+0120 0120 s 	LD HL, PASSA ; reset password saving address
+0123 0123 s 
+0123 0123 d 1a
+0123 0123 s PASSC:	LD A, (DE) ; get a byte
+0124 0124 d be
+0124 0124 s 	CP (HL)	       ; and compare
+0125 0125 d c20700
+0125 0125 s 	JP NZ, CLEAR ; the two bytes are not equal
+0128 0128 s 	
+0128 0128 d 13
+0128 0128 s 	INC DE
+0129 0129 d 23
+0129 0129 s 	INC HL
+012a 012a d 05
+012a 012a s 	DEC B
+012b 012b s 
+012b 012b d c22301
+012b 012b s 	JP NZ, PASSC ; compare next two bytes
+012e 012e s 	
+012e 012e d 3e01
+012e 012e s 	LD A, 01H
+0130 0130 d 325420
+0130 0130 s 	LD (LOGFLAG), A ; login success
+0133 0133 d cd4b00
+0133 0133 s 	CALL INITIN
+0136 0136 d c32000
+0136 0136 s 	JP LOGTST
+0139 0139 s 	
+0139 0139 s 
+0139 0139 s ; save a byte stored in B
+0139 0139 s ; in its location start from PASSA
+0139 0139 d 
+0139 0139 s SAVEIN:	
+0139 0139 d 70
+0139 0139 s 	LD (HL), B
+013a 013a d 23
+013a 013a s 	INC HL
+013b 013b d 0c
+013b 013b s 	INC C
+013c 013c d c32b00
+013c 013c s 	JP CHECK
+013f 013f s 
+013f 013f s ; password saving addresss (where it keypad input be saved in RAM)
+013f 013f d 
+013f 013f s OUTSTAT		EQU 2050H
+013f 013f d 
+013f 013f s INOUTFLAG	EQU 2051H	; flag	0 = outside room 
+013f 013f s 			 	;	1 = inside room
+013f 013f d 
+013f 013f s LASTSEN 	EQU 2052H	; last sensor activated
+013f 013f s 				;	0 = none
+013f 013f s 				;	1 = SENSOR1
+013f 013f s 				;	2 = SENSOR2
+013f 013f d 
+013f 013f s SENCOUNT 	EQU 2053H
+013f 013f s ;FANSTAT	EQU 2053H
+013f 013f d 
+013f 013f s LOGFLAG		EQU 2054H
+013f 013f d 
+013f 013f s PASSA 		EQU 2055H
+013f 013f s 
+013f 013f s ; define the password here
+013f 013f d 
+013f 013f s PASSD:
+013f 013f d 07
+013f 013f s 		DB 07D
+0140 0140 d 03
+0140 0140 s 		DB 03D
+0141 0141 d 05
+0141 0141 s 		DB 05D
+0142 0142 d 08
+0142 0142 s 		DB 08D
+002e a loop
+0052 a loop2
+002b a check
+0007 a clear
+0116 a initc
+0079 a doorc
+0123 a passc
+013f a passd
+006e a dooro
+0000 a start
+0098 a speed0
+00a2 a speed1
+00ac a speed2
+004f a takein
+00e9 a inside
+0084 a togfan
+0139 a savein
+004b a initin
+00c2 a lhtres
+00ca a lhtset
+0020 a logtst
+0102 a sensor1
+010c a sensor2
+00b6 a toglght
+00f3 a outside
+00d2 a checkinout

@@ -1,0 +1,304 @@
+   1:				; init the PPI
+   2:				; A IN, B IN, C OUT
+   3:     -	0000          	START:
+   4:    0+7	0000  3E92    		LD A, 92H
+   5:    7+11	0002  D303    		OUT 03H
+   6:   18+10	0004  311027  		LD SP, 2710H
+   7:				
+   8:     -	0007          	CLEAR:	
+   9:   28+10	0007  215520  		LD HL, PASSA
+  10:   38+10	000A  113F01  		LD DE, PASSD
+  11:				
+  12:   48+7	000D  3E00    		LD A, 00H
+  13:   55+13	000F  325020  		LD (OUTSTAT), A ; output stat saved
+  14:   68+13	0012  325320  		LD (SENCOUNT), A ; sensors count/activated
+  15:   81+13	0015  325220  		LD (LASTSEN), A ; last activated sensor
+  16:   94+13	0018  325420  		LD (LOGFLAG), A ; log in state (flag) 0 = password hasn't been entered
+  17:							;			    wrong password
+  18:						 	;			    or cleared
+  19:						  	; 	      		1 = successful login
+  20:  107+7	001B  0E00    		LD C, 00H ; password length (count of bytes entered)
+  21:  114+10	001D  C32B00  		JP CHECK
+  22:				
+  23:				
+  24:				; FIXME: using interrupts is better here
+  25:     -	0020          	LOGTST:
+  26:  124+13	0020  3A5420  		LD A, (LOGFLAG)
+  27:  137+7	0023  FE01    		CP 01H ; logged in?
+  28:  144+10	0025  CA4F00  		JP Z, TAKEIN	; logged in
+  29:  154+10	0028  C30700  		JP CLEAR	; not logged in, recheck
+  30:				
+  31:				; check for password input
+  32:				; data available "DA" pin at the first bit of PORT C (C4..C7)
+  33:     -	002B          	CHECK:
+  34:  164+11	002B  DB01    		IN 01H ; get data from port B
+  35:  175+4	002D  47      		LD B, A
+  36:				
+  37:  179+11	002E  DB01    	LOOP:	IN 01H
+  38:  190+4	0030  B8      		CP B
+  39:  194+10	0031  CA2E00  		JP Z, LOOP
+  40:					
+  41:					; check for data availability
+  42:  204+4	0034  78      		LD A, B
+  43:  208+7	0035  E601    		AND 00000001B
+  44:  215+10	0037  CA2B00  		JP Z, CHECK ; no key available
+  45:				
+  46:  225+11	003A  DB00    		IN 00H ; ok key is available, read it
+  47:  236+4	003C  47      		LD B, A ; temp storage
+  48:				
+  49:  240+7	003D  FE0A    		CP 10D ; key is 10 (clear)?
+  50:  247+10	003F  CA0700  		JP Z, CLEAR ; then clear
+  51:				
+  52:  257+4	0042  78      		LD A, B ; reload key
+  53:				
+  54:  261+7	0043  FE0B    		CP 11D ; key is 11 (enter)?
+  55:  268+10	0045  CA1601  		JP Z, INITC ; compare password
+  56:				
+  57:  278+10	0048  C33901  		JP SAVEIN ; else save data
+  58:				
+  59:				
+  60:				; first open the door and toggle with speed 1
+  61:     -	004B          	INITIN:
+  62:  288+17	004B  CD6E00  		CALL DOORO ; open door
+  63:					;CALL TOGFAN  ; toggle fan
+  64:					;CALL TOGLGHT ; toggle light
+  65:  305+10	004E  C9      		RET
+  66:				
+  67:				; read the inputs of bits 4, 5, 6 of PORT B
+  68:				; bit 4 	fan control
+  69:				; bit 5, 6	two sensors control
+  70:  315+11	004F  DB01    	TAKEIN:	IN 01H ; take input
+  71:  326+4	0051  47      		LD B, A
+  72:					
+  73:				; wait for input to change
+  74:     -	0052          	LOOP2:	
+  75:  330+11	0052  DB01    		IN 01H
+  76:  341+4	0054  B8      		CP B
+  77:  345+10	0055  CA5200  		JP Z, LOOP2
+  78:					
+  79:  355+4	0058  78      		LD A, B ; restore
+  80:				
+  81:  359+8	0059  CB60    		BIT 4, B ; test bit 4
+  82:  367+10+7	005B  CC8400  		CALL Z, TOGFAN ; toggle fan
+  83:				
+  84:  377+8	005E  CB68    		BIT 5, B ; test bit 5
+  85:  385+10+7	0060  CC0201  		CALL Z, SENSOR1
+  86:  395+8	0063  CB70    		BIT 6, B ; test bit 6 
+  87:  403+10+7	0065  CC0C01  		CALL Z, SENSOR2
+  88:  413+17	0068  CDD200  		CALL CHECKINOUT ; check sensors
+  89:					;CALL TOGSEN ; toggle door and lights
+  90:				
+  91:  430+10	006B  C32000  		JP LOGTST ; go to test login again
+  92:				
+  93:				; open door
+  94:     -	006E          	DOORO:	
+  95:  440+13	006E  3A5020  		LD A, (OUTSTAT) ; load current output stat
+  96:  453+8	0071  CBC7    		SET 0, A ; set the first bit, door is opened
+  97:  461+13	0073  325020  		LD (OUTSTAT), A ; save output stat
+  98:  474+11	0076  D302    		OUT 02H
+  99:  485+10	0078  C9      		RET
+ 100:				
+ 101:				; close door
+ 102:     -	0079          	DOORC:
+ 103:  495+13	0079  3A5020  		LD A, (OUTSTAT) ; load current output stat
+ 104:  508+8	007C  CB87    		RES 0, A ; set the first bit, door is opened
+ 105:  516+13	007E  325020  		LD (OUTSTAT), A ; save output stat
+ 106:  529+11	0081  D302    		OUT 02H
+ 107:  540+10	0083  C9      		RET
+ 108:				
+ 109:				
+ 110:				; toggle fan directly from last output
+ 111:     -	0084          	TOGFAN:
+ 112:  550+13	0084  3A5020  		LD A, (OUTSTAT) ; load current output stat
+ 113:  563+13	0087  325020  		LD (OUTSTAT), A
+ 114:  576+8	008A  CB57    		BIT 2, A ; test for speed1?
+ 115:  584+10	008C  C2AC00  		JP NZ, SPEED2 ; yes, go to speed2
+ 116:  594+8	008F  CB5F    		BIT 3, A ; test for speed2
+ 117:  602+10	0091  CAA200  		JP Z, SPEED1 ; no, go to speed1
+ 118:  612+17	0094  CD9800  		CALL SPEED0
+ 119:  629+10	0097  C9      		RET
+ 120:				
+ 121:     -	0098          	SPEED0:	
+ 122:  639+8	0098  CB97    		RES 2, A ;speed0 off
+ 123:  647+8	009A  CB9F    		RES 3, A
+ 124:  655+13	009C  325020  		LD (OUTSTAT), A
+ 125:  668+11	009F  D302    		OUT 02H
+ 126:  679+10	00A1  C9      		RET
+ 127:				
+ 128:     -	00A2          	SPEED1: 
+ 129:  689+8	00A2  CBD7    		SET 2, A
+ 130:  697+8	00A4  CB9F    		RES 3, A
+ 131:  705+13	00A6  325020  		LD (OUTSTAT), A
+ 132:  718+11	00A9  D302    		OUT 02H
+ 133:  729+10	00AB  C9      		RET
+ 134:				
+ 135:     -	00AC          	SPEED2:	
+ 136:  739+8	00AC  CBDF    		SET 3, A
+ 137:  747+8	00AE  CB97    		RES 2, A
+ 138:  755+13	00B0  325020  		LD (OUTSTAT), A
+ 139:  768+11	00B3  D302    		OUT 02H
+ 140:  779+10	00B5  C9      		RET
+ 141:				
+ 142:				
+ 143:     -	00B6          	TOGLGHT:
+ 144:  789+13	00B6  3A5020  		LD A, (OUTSTAT) ; load current output stat
+ 145:  802+8	00B9  CB4F    		BIT 1, A
+ 146:  810+10	00BB  C2C200  		JP NZ, LHTRES
+ 147:  820+10	00BE  C3CA00  		JP LHTSET
+ 148:  830+10	00C1  C9      		RET
+ 149:				
+ 150:  840+8	00C2  CB8F    	LHTRES:	RES 1, A
+ 151:  848+13	00C4  325020  		LD (OUTSTAT), A
+ 152:  861+11	00C7  D302    		OUT 02H
+ 153:  872+10	00C9  C9      		RET
+ 154:				
+ 155:  882+8	00CA  CBCF    	LHTSET:	SET 1, A
+ 156:  890+13	00CC  325020  		LD (OUTSTAT), A
+ 157:  903+11	00CF  D302    		OUT 02H
+ 158:  914+10	00D1  C9      		RET
+ 159:				
+ 160:				
+ 161:     -	00D2          	CHECKINOUT:
+ 162:  924+13	00D2  3A5320  		LD A, (SENCOUNT)
+ 163:  937+7	00D5  FE02    		CP 02H
+ 164:  944+5+6	00D7  C0      		RET NZ
+ 165:				
+ 166:  949+7	00D8  3E00    		LD A, 00H
+ 167:  956+13	00DA  325320  		LD (SENCOUNT), A ; reset sensor count
+ 168:				
+ 169:  969+13	00DD  3A5220  		LD A, (LASTSEN)
+ 170:  982+7	00E0  FE01    		CP 01H
+ 171:  989+10+7	00E2  CCF300  		CALL Z, OUTSIDE
+ 172:  999+17	00E5  CDE900  		CALL INSIDE
+ 173: 1016+10	00E8  C9      		RET
+ 174:				
+ 175:     -	00E9          	INSIDE:
+ 176: 1026+17	00E9  CDA200  		CALL SPEED1
+ 177: 1043+17	00EC  CDCA00  		CALL LHTSET
+ 178: 1060+17	00EF  CD6E00  		CALL DOORO
+ 179: 1077+10	00F2  C9      		RET
+ 180:				
+ 181:     -	00F3          	OUTSIDE:
+ 182: 1087+17	00F3  CD7900  		CALL DOORC
+ 183: 1104+17	00F6  CD9800  		CALL SPEED0
+ 184: 1121+17	00F9  CDC200  		CALL LHTRES
+ 185: 1138+17	00FC  CD0700  		CALL CLEAR
+ 186: 1155+10	00FF  C32B00  		JP CHECK
+ 187:				
+ 188:     -	0102          	SENSOR1:
+ 189: 1165+7	0102  3E01    		LD A, 01H
+ 190: 1172+13	0104  325220  		LD (LASTSEN), A
+ 191: 1185+10	0107  215320  		LD HL, SENCOUNT
+ 192: 1195+11	010A  34      		INC (HL)
+ 193: 1206+10	010B  C9      		RET
+ 194:				
+ 195:     -	010C          	SENSOR2:
+ 196: 1216+7	010C  3E02    		LD A, 02H
+ 197: 1223+13	010E  325220  		LD (LASTSEN), A
+ 198: 1236+10	0111  215320  		LD HL, SENCOUNT
+ 199: 1246+11	0114  34      		INC (HL)
+ 200: 1257+10	0115  C9      		RET
+ 201:				
+ 202:				; compare password and set the loggin flag
+ 203:				; FIXME: length checked every time
+ 204:     -	0116          	INITC:
+ 205: 1267+4	0116  79      		LD A, C
+ 206: 1271+4	0117  41      		LD B, C ; save current length to memory
+ 207: 1275+7	0118  FE04    		CP 04D ; check for current length
+ 208: 1282+10	011A  C20700  		JP NZ, CLEAR ; length is not equal to our password 7358
+ 209:					
+ 210:					; length is ok, start comparison
+ 211:				
+ 212: 1292+10	011D  113F01  		LD DE, PASSD ; reset password address
+ 213: 1302+10	0120  215520  		LD HL, PASSA ; reset password saving address
+ 214:				
+ 215: 1312+7	0123  1A      	PASSC:	LD A, (DE) ; get a byte
+ 216: 1319+7	0124  BE      		CP (HL)	       ; and compare
+ 217: 1326+10	0125  C20700  		JP NZ, CLEAR ; the two bytes are not equal
+ 218:					
+ 219: 1336+6	0128  13      		INC DE
+ 220: 1342+6	0129  23      		INC HL
+ 221: 1348+4	012A  05      		DEC B
+ 222:				
+ 223: 1352+10	012B  C22301  		JP NZ, PASSC ; compare next two bytes
+ 224:					
+ 225: 1362+7	012E  3E01    		LD A, 01H
+ 226: 1369+13	0130  325420  		LD (LOGFLAG), A ; login success
+ 227: 1382+17	0133  CD4B00  		CALL INITIN
+ 228: 1399+10	0136  C32000  		JP LOGTST
+ 229:					
+ 230:				
+ 231:				; save a byte stored in B
+ 232:				; in its location start from PASSA
+ 233:     -	0139          	SAVEIN:	
+ 234: 1409+7	0139  70      		LD (HL), B
+ 235: 1416+6	013A  23      		INC HL
+ 236: 1422+4	013B  0C      		INC C
+ 237: 1426+10	013C  C32B00  		JP CHECK
+ 238:				
+ 239:				; password saving addresss (where it keypad input be saved in RAM)
+ 240:     -	2050          	OUTSTAT		EQU 2050H
+ 241:     -	2051          	INOUTFLAG	EQU 2051H	; flag	0 = outside room 
+ 242:							 	;	1 = inside room
+ 243:     -	2052          	LASTSEN 	EQU 2052H	; last sensor activated
+ 244:								;	0 = none
+ 245:								;	1 = SENSOR1
+ 246:								;	2 = SENSOR2
+ 247:     -	2053          	SENCOUNT 	EQU 2053H
+ 248:				;FANSTAT	EQU 2053H
+ 249:     -	2054          	LOGFLAG		EQU 2054H
+ 250:     -	2055          	PASSA 		EQU 2055H
+ 251:				
+ 252:				; define the password here
+ 253:     -	013F          	PASSD:
+ 254:     -	013F  07      			DB 07D
+ 255:     -	0140  03      			DB 03D
+ 256:     -	0141  05      			DB 05D
+ 257:     -	0142  08      			DB 08D
+
+
+
+Statistics:
+
+     4	passes
+     0	jr promotions
+    32	symbols
+   323	bytes
+
+
+
+Symbol Table:
+
+check             2b     
+checkinout        d2     
+clear              7     
+doorc             79     
+dooro             6e     
+initc            116     
+initin            4b     
+inoutflag      =2051     
+inside            e9     
+lastsen        =2052     
+lhtres            c2     
+lhtset            ca     
+logflag        =2054     
+logtst            20     
+loop              2e     
+loop2             52     
+outside           f3     
+outstat        =2050     
+passa          =2055     
+passc            123     
+passd            13f     
+savein           139     
+sencount       =2053     
+sensor1          102     
+sensor2          10c     
+speed0            98     
+speed1            a2     
+speed2            ac     
+start              0     
+takein            4f     
+togfan            84     
+toglght           b6     
+

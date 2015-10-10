@@ -1,0 +1,24 @@
+   1:    0+7	0000  3E82    	START:	LD A, 82H
+   2:    7+11	0002  D303    		OUT 03H
+   3:   18+7	0004  0600    		LD B, 00H
+   4:   25+4	0006  04      	INCRB:	INC B
+   5:   29+11	0007  D300    		OUT 00H
+**** car_parking.asm ****
+   6:   40+10	0009  C30600  		JP INCRB
+
+
+
+Statistics:
+
+     3	passes
+     0	jr promotions
+     2	symbols
+    12	bytes
+
+
+
+Symbol Table:
+
+incrb              6     
+start              0     
+

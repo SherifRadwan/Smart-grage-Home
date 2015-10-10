@@ -1,0 +1,93 @@
+binary-debuggable-source
+0000 0000 s ; initialize ports as following
+0000 0000 s ; A OUT, B IN, C OUT (82H)
+0000 0000 d 3e8b
+0000 0000 s START:	LD A, 8BH ;LD A, 82H
+0002 0002 d d303
+0002 0002 s 	OUT 03H
+0004 0004 d 0600
+0004 0004 s 	LD B, 00H ; for the up/down counter value
+0006 0006 s 
+0006 0006 s ; take input from port B (01H)
+0006 0006 d db01
+0006 0006 s TAKEIN:  IN 01H
+0008 0008 d 57
+0008 0008 s 	LD D, A ; save the input
+0009 0009 s 
+0009 0009 s ; loop until input changes
+0009 0009 d db01
+0009 0009 s LOOP:	IN 01H
+000b 000b d ba
+000b 000b s 	CP D
+000c 000c d ca0900
+000c 000c s 	JP Z, LOOP
+000f 000f s 	
+000f 000f d 7a
+000f 000f s CHECK:	LD A, D ; restore original input
+0010 0010 d e601
+0010 0010 s 	AND 00000001B ; check for the first input at bit 0
+0012 0012 d cc1e00
+0012 0012 s 	CALL Z, INCRB
+0015 0015 d 7a
+0015 0015 s 	LD A, D ; reload original input
+0016 0016 d e608
+0016 0016 s 	AND 00001000B ; check for the second input at bit 3
+0018 0018 d cc2300
+0018 0018 s 	CALL Z, DECRB
+001b 001b d c30600
+001b 001b s 	JP TAKEIN
+001e 001e s 
+001e 001e s ; increament and output on port A (00H)
+001e 001e d 04
+001e 001e s INCRB:	INC B
+001f 001f d 78
+001f 001f s 	LD A, B
+0020 0020 d d300
+0020 0020 s 	OUT 00H
+0022 0022 d c9
+0022 0022 s 	RET
+0023 0023 s 
+0023 0023 s ; decrement and output on port A (00H)
+0023 0023 d 05
+0023 0023 s DECRB:	DEC B
+0024 0024 d 78
+0024 0024 s 	LD A, B
+0025 0025 d d300
+0025 0025 s 	OUT 00H
+0027 0027 d c9
+0027 0027 s 	RET
+0028 0028 s 
+0028 0028 d 
+0028 0028 s MATSIZE	EQU 12D ; size of matrix
+0028 0028 d 11
+0028 0028 s KEYMAT:	DB 00010001B ; 1 
+0029 0029 d 21
+0029 0029 s 	DB 00100001B ; 2
+002a 002a d 41
+002a 002a s 	DB 01000001B ; 3
+002b 002b d 12
+002b 002b s 	DB 00010010B ; 4
+002c 002c d 22
+002c 002c s 	DB 00100010B ; 5
+002d 002d d 42
+002d 002d s 	DB 01000010B ; 6
+002e 002e d 14
+002e 002e s 	DB 00010100B ; 7 
+002f 002f d 24
+002f 002f s 	DB 00100100B ; 8
+0030 0030 d 44
+0030 0030 s 	DB 01000100B ; 9
+0031 0031 d 18
+0031 0031 s 	DB 00011000B ; del 
+0032 0032 d 28
+0032 0032 s 	DB 00101000B ; 0
+0033 0033 f car_parking.asm
+0033 0033 d 48
+0033 0033 s 	DB 01001000B ; enter
+0009 a loop
+000f a check
+0023 a decrb
+001e a incrb
+0000 a start
+0006 a takein
+0028 a keymat

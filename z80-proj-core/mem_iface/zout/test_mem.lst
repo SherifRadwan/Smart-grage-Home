@@ -1,0 +1,20 @@
+   1:    0+13	0000  3A3332  	START:	LD A, (3233H) ; read from EEPROM
+   2:   13+13	0003  320920  		LD (2009H), A ; write from RAM
+**** test_mem.asm ****
+   3:   26+10	0006  C30000  		JP START
+
+
+
+Statistics:
+
+     3	passes
+     0	jr promotions
+     1	symbols
+     9	bytes
+
+
+
+Symbol Table:
+
+start              0     
+

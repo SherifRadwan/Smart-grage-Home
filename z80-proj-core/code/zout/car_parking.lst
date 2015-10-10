@@ -1,0 +1,72 @@
+   1:				; initialize ports as following
+   2:				; A OUT, B IN, C OUT (82H)
+   3:    0+7	0000  3E8B    	START:	LD A, 8BH ;LD A, 82H
+   4:    7+11	0002  D303    		OUT 03H
+   5:   18+7	0004  0600    		LD B, 00H ; for the up/down counter value
+   6:				
+   7:				; take input from port B (01H)
+   8:   25+11	0006  DB01    	TAKEIN:  IN 01H
+   9:   36+4	0008  57      		LD D, A ; save the input
+  10:				
+  11:				; loop until input changes
+  12:   40+11	0009  DB01    	LOOP:	IN 01H
+  13:   51+4	000B  BA      		CP D
+  14:   55+10	000C  CA0900  		JP Z, LOOP
+  15:					
+  16:   65+4	000F  7A      	CHECK:	LD A, D ; restore original input
+  17:   69+7	0010  E601    		AND 00000001B ; check for the first input at bit 0
+  18:   76+10+7	0012  CC1E00  		CALL Z, INCRB
+  19:   86+4	0015  7A      		LD A, D ; reload original input
+  20:   90+7	0016  E608    		AND 00001000B ; check for the second input at bit 3
+  21:   97+10+7	0018  CC2300  		CALL Z, DECRB
+  22:  107+10	001B  C30600  		JP TAKEIN
+  23:				
+  24:				; increament and output on port A (00H)
+  25:  117+4	001E  04      	INCRB:	INC B
+  26:  121+4	001F  78      		LD A, B
+  27:  125+11	0020  D300    		OUT 00H
+  28:  136+10	0022  C9      		RET
+  29:				
+  30:				; decrement and output on port A (00H)
+  31:  146+4	0023  05      	DECRB:	DEC B
+  32:  150+4	0024  78      		LD A, B
+  33:  154+11	0025  D300    		OUT 00H
+  34:  165+10	0027  C9      		RET
+  35:				
+  36:     -	000C          	MATSIZE	EQU 12D ; size of matrix
+  37:     -	0028  11      	KEYMAT:	DB 00010001B ; 1 
+  38:     -	0029  21      		DB 00100001B ; 2
+  39:     -	002A  41      		DB 01000001B ; 3
+  40:     -	002B  12      		DB 00010010B ; 4
+  41:     -	002C  22      		DB 00100010B ; 5
+  42:     -	002D  42      		DB 01000010B ; 6
+  43:     -	002E  14      		DB 00010100B ; 7 
+  44:     -	002F  24      		DB 00100100B ; 8
+  45:     -	0030  44      		DB 01000100B ; 9
+  46:     -	0031  18      		DB 00011000B ; del 
+  47:     -	0032  28      		DB 00101000B ; 0
+**** car_parking.asm ****
+  48:     -	0033  48      		DB 01001000B ; enter
+
+
+
+Statistics:
+
+     4	passes
+     0	jr promotions
+     8	symbols
+    52	bytes
+
+
+
+Symbol Table:
+
+check              f     
+decrb             23     
+incrb             1e     
+keymat            28     
+loop               9     
+matsize        =   c     
+start              0     
+takein             6     
+
